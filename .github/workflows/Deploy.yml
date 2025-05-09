@@ -1,0 +1,37 @@
+name: Deploy Apex Arc Predictor
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Streamlit app and export predictions
+        run: |
+          streamlit run app.py --server.headless true &
+          sleep 10
+          python -c "from prediction_model import get_daily_predictions; df = get_daily_predictions(); df.to_csv('top_100_hr_predictions.csv', index=False)"
+
+      - name: Commit HR predictions
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add top_100_hr_predictions.csv
+          git commit -m "Auto-upload: HR predictions"
+          git push || echo "No changes to commit"
