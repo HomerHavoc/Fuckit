@@ -1,0 +1,40 @@
+name: build-deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONPATH: ./src  # Adjust if 'prediction_model.py' is in 'src/' or another folder
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Streamlit app and export predictions
+        run: |
+          streamlit run src/app.py --server.headless true &
+          python src/export_predictions.py  # Or whatever your export script is called
+
+      - name: Commit HR predictions
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add predictions_output/*
+          git commit -m "Auto-commit HR predictions"
+          git push
